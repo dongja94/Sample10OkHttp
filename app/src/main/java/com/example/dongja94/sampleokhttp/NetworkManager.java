@@ -57,7 +57,7 @@ public class NetworkManager {
         CookieManager cookieManager = new CookieManager(new PersistentCookieStore(context), CookiePolicy.ACCEPT_ALL);
         builder.cookieJar(new JavaNetCookieJar(cookieManager));
 
-        disableCertificateValidation(builder);
+//        disableCertificateValidation(builder);
 
         mClient = builder.build();
     }
@@ -90,6 +90,10 @@ public class NetworkManager {
         }
     }
 
+
+    public void cancelAll() {
+        mClient.dispatcher().cancelAll();
+    }
 
     public interface OnResultListener<T> {
         public void onSuccess(Request request, T result);

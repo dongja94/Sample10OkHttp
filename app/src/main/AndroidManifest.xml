@@ -23,6 +23,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <meta-data android:name="com.example.dongja94.sampleokhttp.MyGlideModule"
+            android:value="GlideModule" />
+
     </application>
 
 </manifest>

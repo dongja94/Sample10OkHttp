@@ -2,9 +2,12 @@ package com.example.dongja94.sampleokhttp;
 
 import android.content.Context;
 import android.text.Html;
+import android.text.TextUtils;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
 
 /**
  * Created by dongja94 on 2016-02-05.
@@ -29,5 +32,15 @@ public class ItemView extends FrameLayout {
         this.item = item;
         titleView.setText(Html.fromHtml(item.title));
         directorView.setText(item.director);
+        if (!TextUtils.isEmpty(item.image)) {
+//            Picasso.with(getContext())
+//                    .load(Uri.parse(item.image))
+//                    .into(iconView);
+            Glide.with(getContext())
+                    .load(item.image)
+                    .into(iconView);
+        } else {
+            iconView.setImageResource(R.mipmap.ic_launcher);
+        }
     }
 }
