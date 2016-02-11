@@ -57,6 +57,7 @@ public class NetworkManager {
         CookieManager cookieManager = new CookieManager(new PersistentCookieStore(context), CookiePolicy.ACCEPT_ALL);
         builder.cookieJar(new JavaNetCookieJar(cookieManager));
 
+        disableCertificateValidation(builder);
 
         mClient = builder.build();
     }
