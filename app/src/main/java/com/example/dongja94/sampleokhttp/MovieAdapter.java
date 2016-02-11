@@ -16,6 +16,31 @@ public class MovieAdapter extends BaseAdapter {
         this.items.addAll(items);
         notifyDataSetChanged();
     }
+
+    public void clearAll() {
+        items.clear();
+        notifyDataSetChanged();
+    }
+
+    private int totalCount;
+    private String keyword;
+
+    public int getTotalCount() {
+        return totalCount;
+    }
+
+    public void setTotalCount(int totalCount) {
+        this.totalCount = totalCount;
+    }
+
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword = keyword;
+    }
+
     @Override
     public int getCount() {
         return items.size();
