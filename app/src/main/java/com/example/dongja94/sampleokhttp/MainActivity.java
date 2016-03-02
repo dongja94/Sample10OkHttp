@@ -101,28 +101,40 @@ public class MainActivity extends AppCompatActivity {
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final String keyword = keywordView.getText().toString();
-                if (!TextUtils.isEmpty(keyword)) {
-                    try {
-                        NetworkManager.getInstance().getNaverMovie(MainActivity.this,
-                                keyword, 1, 50, new NetworkManager.OnResultListener<NaverMovies>() {
-                                    @Override
-                                    public void onSuccess(Request request, NaverMovies result) {
-                                        mAdapter.clearAll();
-                                        mAdapter.addAll(result.items);
-                                        mAdapter.setTotalCount(result.total);
-                                        mAdapter.setKeyword(keyword);
-                                    }
 
-                                    @Override
-                                    public void onFailure(Request request, int code, Throwable cause) {
-                                        Toast.makeText(MainActivity.this, "fail", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                    } catch (UnsupportedEncodingException e) {
-                        e.printStackTrace();
+                NetworkManager.getInstance().testSSL(MainActivity.this, new NetworkManager.OnResultListener<String>() {
+                    @Override
+                    public void onSuccess(Request request, String result) {
+                        Toast.makeText(MainActivity.this, "string : " + result, Toast.LENGTH_SHORT).show();
                     }
-                }
+
+                    @Override
+                    public void onFailure(Request request, int code, Throwable cause) {
+                        Toast.makeText(MainActivity.this, "error" , Toast.LENGTH_SHORT).show();
+                    }
+                });
+//                final String keyword = keywordView.getText().toString();
+//                if (!TextUtils.isEmpty(keyword)) {
+//                    try {
+//                        NetworkManager.getInstance().getNaverMovie(MainActivity.this,
+//                                keyword, 1, 50, new NetworkManager.OnResultListener<NaverMovies>() {
+//                                    @Override
+//                                    public void onSuccess(Request request, NaverMovies result) {
+//                                        mAdapter.clearAll();
+//                                        mAdapter.addAll(result.items);
+//                                        mAdapter.setTotalCount(result.total);
+//                                        mAdapter.setKeyword(keyword);
+//                                    }
+//
+//                                    @Override
+//                                    public void onFailure(Request request, int code, Throwable cause) {
+//                                        Toast.makeText(MainActivity.this, "fail", Toast.LENGTH_SHORT).show();
+//                                    }
+//                                });
+//                    } catch (UnsupportedEncodingException e) {
+//                        e.printStackTrace();
+//                    }
+//                }
             }
         });
     }

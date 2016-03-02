@@ -9,18 +9,24 @@ import com.begentgroup.xmlparser.XMLParser;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
 import java.net.URLEncoder;
-import java.security.SecureRandom;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 
 import okhttp3.Cache;
 import okhttp3.Call;
@@ -35,6 +41,7 @@ import okhttp3.Response;
  */
 public class NetworkManager {
     private static NetworkManager instance;
+
     public static NetworkManager getInstance() {
         if (instance == null) {
             instance = new NetworkManager();
@@ -44,7 +51,8 @@ public class NetworkManager {
 
     OkHttpClient mClient;
     private static final int MAX_CACHE_SIZE = 10 * 1024 * 1024;
-    private  NetworkManager() {
+
+    private NetworkManager() {
         OkHttpClient.Builder builder = new OkHttpClient.Builder();
         Context context = MyApplication.getContext();
         File cachefile = new File(context.getExternalCacheDir(), "mycache");
@@ -57,36 +65,54 @@ public class NetworkManager {
         CookieManager cookieManager = new CookieManager(new PersistentCookieStore(context), CookiePolicy.ACCEPT_ALL);
         builder.cookieJar(new JavaNetCookieJar(cookieManager));
 
-//        disableCertificateValidation(builder);
+        try {
+            disableCertificateValidation(context, builder);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         mClient = builder.build();
     }
 
-    static void disableCertificateValidation(OkHttpClient.Builder builder) {
-        TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
+    static void disableCertificateValidation(Context context, OkHttpClient.Builder builder) throws IOException {
 
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {
-                    }
-
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {
-                    }
-                }};
-
-        HostnameVerifier hv = new HostnameVerifier() {
-            public boolean verify(String hostname, SSLSession session) {
-                return true;
-            }
-        };
         try {
-            SSLContext sc = SSLContext.getInstance("SSL");
-            sc.init(null, trustAllCerts, new SecureRandom());
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            InputStream caInput = context.getResources().openRawResource(R.raw.ca);
+            Certificate ca;
+            try {
+                ca = cf.generateCertificate(caInput);
+                System.out.println("ca=" + ((X509Certificate) ca).getSubjectDN());
+            } finally {
+                caInput.close();
+            }
+            String keyStoreType = KeyStore.getDefaultType();
+            KeyStore keyStore = KeyStore.getInstance(keyStoreType);
+            keyStore.load(null, null);
+            keyStore.setCertificateEntry("ca", ca);
+
+            String tmfAlgorithm = TrustManagerFactory.getDefaultAlgorithm();
+            TrustManagerFactory tmf = TrustManagerFactory.getInstance(tmfAlgorithm);
+            tmf.init(keyStore);
+
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, tmf.getTrustManagers(), null);
+            HostnameVerifier hv = new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            };
+            sc.init(null, tmf.getTrustManagers(), null);
             builder.sslSocketFactory(sc.getSocketFactory());
             builder.hostnameVerifier(hv);
-        } catch (Exception e) {
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
         }
     }
 
@@ -97,6 +123,7 @@ public class NetworkManager {
 
     public interface OnResultListener<T> {
         public void onSuccess(Request request, T result);
+
         public void onFailure(Request request, int code, Throwable cause);
     }
 
@@ -111,14 +138,14 @@ public class NetworkManager {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            CallbackObject object = (CallbackObject)msg.obj;
+            CallbackObject object = (CallbackObject) msg.obj;
             Request request = object.request;
             OnResultListener listener = object.listener;
             switch (msg.what) {
-                case MESSAGE_SUCCESS :
+                case MESSAGE_SUCCESS:
                     listener.onSuccess(request, object.result);
                     break;
-                case MESSAGE_FAILURE :
+                case MESSAGE_FAILURE:
                     listener.onFailure(request, -1, object.exception);
                     break;
             }
@@ -148,7 +175,7 @@ public class NetworkManager {
 
         Request request = new Request.Builder().url(url)
                 .header("X-Naver-Client-Id", "FRzO_6MMu6zwQYAaXlZr")
-                .header("X-Naver-Client-Secret","z0iOB55iQk")
+                .header("X-Naver-Client-Secret", "z0iOB55iQk")
                 .tag(context)
                 .build();
 
@@ -173,5 +200,31 @@ public class NetworkManager {
         });
 
         return request;
+    }
+
+    public Request testSSL(Context context, final OnResultListener<String> listener) {
+        Request request = new Request.Builder().url("https://192.168.210.51:8443/test.html").build();
+        final CallbackObject<String> callbackObject = new CallbackObject<String>();
+
+        callbackObject.request = request;
+        callbackObject.listener = listener;
+        mClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                callbackObject.exception = e;
+                Message msg = mHandler.obtainMessage(MESSAGE_FAILURE, callbackObject);
+                mHandler.sendMessage(msg);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                callbackObject.result = response.body().string();
+                Message msg = mHandler.obtainMessage(MESSAGE_SUCCESS, callbackObject);
+                mHandler.sendMessage(msg);
+            }
+        });
+
+        return request;
+
     }
 }
