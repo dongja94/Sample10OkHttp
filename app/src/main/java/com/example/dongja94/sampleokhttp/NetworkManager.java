@@ -22,6 +22,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.List;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -31,6 +32,7 @@ import javax.net.ssl.TrustManagerFactory;
 import okhttp3.Cache;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.Dispatcher;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -65,16 +67,12 @@ public class NetworkManager {
         CookieManager cookieManager = new CookieManager(new PersistentCookieStore(context), CookiePolicy.ACCEPT_ALL);
         builder.cookieJar(new JavaNetCookieJar(cookieManager));
 
-        try {
-            disableCertificateValidation(context, builder);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        disableCertificateValidation(context, builder);
 
         mClient = builder.build();
     }
 
-    static void disableCertificateValidation(Context context, OkHttpClient.Builder builder) throws IOException {
+    static void disableCertificateValidation(Context context, OkHttpClient.Builder builder) {
 
         try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
@@ -113,12 +111,30 @@ public class NetworkManager {
             e.printStackTrace();
         } catch (KeyManagementException e) {
             e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
 
     public void cancelAll() {
         mClient.dispatcher().cancelAll();
+    }
+
+    public void cancelTag(Object tag) {
+        Dispatcher dispatcher = mClient.dispatcher();
+        List<Call> calls = dispatcher.queuedCalls();
+        for (Call call : calls) {
+            if (call.request().tag().equals(tag)) {
+                call.cancel();
+            }
+        }
+        calls = dispatcher.runningCalls();
+        for (Call call : calls) {
+            if (call.request().tag().equals(tag)) {
+                call.cancel();
+            }
+        }
     }
 
     public interface OnResultListener<T> {
